@@ -1,4 +1,4 @@
-Clone this repo by: git clone <repo>
+Clone this repo by: git clone https://github.com/itsnarahari/gcp-terraform.git
 
 Set the project name
     gcloud config set project shaped-orbit-466705-v7
