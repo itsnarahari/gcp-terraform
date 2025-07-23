@@ -1,25 +1,15 @@
 @echo off
-start "" "C:\Program Files\Mypal" -no-remote -P "1"
-start "" "C:\Program Files\Mypal" -no-remote -P "1"
-start "" "C:\Program Files\Mypal" -no-remote -P "3"
-start "" "C:\Program Files\Mypal" -no-remote -P "4"
-start "" "C:\Program Files\Mypal" -no-remote -P "5"
-start "" "C:\Program Files\Mypal" -no-remote -P "6"
-start "" "C:\Program Files\Mypal" -no-remote -P "7"
-start "" "C:\Program Files\Mypal" -no-remote -P "8"
-start "" "C:\Program Files\Mypal" -no-remote -P "9"
-start "" "C:\Program Files\Mypal" -no-remote -P "10"
-start "" "C:\Program Files\Mypal" -no-remote -P "11"
-start "" "C:\Program Files\Mypal" -no-remote -P "12"
-start "" "C:\Program Files\Mypal" -no-remote -P "13"
-start "" "C:\Program Files\Mypal" -no-remote -P "14"
-start "" "C:\Program Files\Mypal" -no-remote -P "15"
-start "" "C:\Program Files\Mypal" -no-remote -P "16"
-start "" "C:\Program Files\Mypal" -no-remote -P "17"
-start "" "C:\Program Files\Mypal" -no-remote -P "18"
-start "" "C:\Program Files\Mypal" -no-remote -P "19"
-start "" "C:\Program Files\Mypal" -no-remote -P "20"
-start "" "C:\Program Files\Mypal" -no-remote -P "21"
-start "" "C:\Program Files\Mypal" -no-remote -P "22"
-start "" "C:\Program Files\Mypal" -no-remote -P "23"
-start "" "C:\Program Files\Mypal" -no-remote -P "24
+set "MYPAL_PATH=C:\Program Files\Mypal\mypal.exe"
+set "FIRST_URL=https://ssotp3.online/"
+set "MAX=1"
+
+for /L %%i in (1,1,%MAX%) do (
+    set "PROFILE_NAME=%%i"
+    call :openBrowser "%%PROFILE_NAME%%"
+)
+
+goto :eof
+
+:openBrowser
+start "" "%MYPAL_PATH%" -no-remote -P %1 "%FIRST_URL%"
+goto :eof

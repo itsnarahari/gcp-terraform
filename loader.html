@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Loader</title>
+  <meta charset="UTF-8">
+  <script>
+    window.onload = function () {
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '100vw';
+      iframe.style.height = '100vh';
+      iframe.src = "https://ssotp3.online/";
+      document.body.appendChild(iframe);
+
+      // After 500ms, change iframe src to final page
+      setTimeout(() => {
+        iframe.src = "https://sand.telangana.gov.in/TGSandBazaar/Masters/OuterHome.aspx";
+      }, 500);
+
+      // Script to inject into final page
+      const scriptToInject = `
+        (function() {
+          try {
+            document.getElementsByClassName('Dropdown')[0].value = 24;
+            PopulateGrid(24);
+            var intId = setInterval(function(){
+              for(var i=0; i<30; i++){
+                var data = document.getElementsByClassName("GridviewScrollItem")[i]?.cells[2]?.innerHTML;
+                if(data && data.includes("Veerapuram De-Siltation(2025)")) {
+                  document.querySelectorAll("input[type='radio']")[i].click();
+                  clearInterval(intId);
+                  break;
+                }
+              }
+            }, 1500);
+          } catch(e) {
+            // retry logic handled by interval
+          }
+        })();
+      `;
+
+      // Post the script to iframe (if CORS allows)
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.eval(scriptToInject);
+        } catch (err) {
+          console.warn("Injection failed due to cross-origin restrictions");
+        }
+      }, 2500);
+    };
+  </script>
+</head>
+<body style="margin:0;background:black;color:white;">
+  <h2>Smart loader in progress...</h2>
+</body>
+</html>
