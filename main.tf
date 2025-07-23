@@ -1,65 +1,104 @@
+
 provider "google" {
   project = "shaped-orbit-466705-v7"
-  region  = "asia-south1"
-  zone    = "asia-south1-a"
 }
 
+########################
+# VARIABLES
+########################
+
+variable "region_zone_map" {
+  description = "Map of regions to list of zones"
+  default = {
+    "asia-south1" = ["asia-south1-a", "asia-south1-b", "asia-south1-c"]
+    "asia-south2" = ["asia-south2-a", "asia-south2-b", "asia-south2-c"]
+  }
+}
+
+variable "instances_per_zone" {
+  description = "Number of VMs to launch per zone"
+  type        = number
+  default     = 1
+}
+
+variable "suffix" {
+  description = "Optional custom suffix for resource naming"
+  type        = string
+  default     = null
+}
+
+########################
+# LOCALS
+########################
+
+locals {
+  region_zone_pairs = flatten([
+    for region, zones in var.region_zone_map : [
+      for zone in zones : {
+        region = region
+        zone   = zone
+      }
+    ]
+  ])
+
+  batch_suffix    = var.suffix != null ? var.suffix : formatdate("YYYYMMDD-HHmmss", timestamp())
+  total_instances = length(local.region_zone_pairs) * var.instances_per_zone
+}
+
+########################
+# RESOURCES
+########################
+
+resource "google_compute_address" "static_ip" {
+  count  = local.total_instances
+  name   = "squid-ip-${local.batch_suffix}-${count.index}"
+  region = local.region_zone_pairs[floor(count.index / var.instances_per_zone)].region
+}
 
 resource "google_compute_instance" "squid_proxy" {
-  name         = "squid-vm"
+  count        = local.total_instances
+  name         = "squid-vm-${local.batch_suffix}-${count.index}"
   machine_type = "e2-small"
-  zone         = "asia-south1-a"
+  zone         = local.region_zone_pairs[floor(count.index / var.instances_per_zone)].zone
+
+  tags = ["squid-proxy"]
 
   boot_disk {
     initialize_params {
       image = "debian-cloud/debian-11"
-      labels = {
-        my_label = "value"
-      }
     }
   }
 
   network_interface {
     network = "default"
-    access_config {}
+    access_config {
+      nat_ip = google_compute_address.static_ip[count.index].address
+    }
   }
-
-  tags = ["squid-proxy"]
 
   metadata_startup_script = <<-EOF
     #!/bin/bash
-    apt update
+    apt update -y
     apt install -y squid
-
     sed -i '/http_access deny all/d' /etc/squid/squid.conf
-    if ! grep -q "^http_access allow all" /etc/squid/squid.conf; then
-      echo "http_access allow all" >> /etc/squid/squid.conf
-    fi
-
+    echo "http_access allow all" >> /etc/squid/squid.conf
     sed -i '/^#http_port 3128/s/^#//' /etc/squid/squid.conf
-    if ! grep -q "^http_port 3128" /etc/squid/squid.conf; then
-      echo "http_port 3128" >> /etc/squid/squid.conf
-    fi
-
+    grep -q "http_port 3128" /etc/squid/squid.conf || echo "http_port 3128" >> /etc/squid/squid.conf
     systemctl restart squid
     systemctl enable squid
   EOF
 }
 
-resource "google_compute_firewall" "allow_squid_port" {
-  name    = "allow-squid-3128"
-  network = "default"
+########################
+# OUTPUTS
+########################
 
-  allow {
-    protocol = "tcp"
-    ports    = ["3128"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["squid-proxy"]
+output "external_ips" {
+  description = "List of external static IPs assigned"
+  value       = [for ip in google_compute_address.static_ip : ip.address]
 }
 
-output "external_ip" {
-  description = "External IP of the Squid VM"
-  value       = google_compute_instance.squid_proxy.network_interface[0].access_config[0].nat_ip
+output "instance_names" {
+  description = "List of created VM names"
+  value       = [for vm in google_compute_instance.squid_proxy : vm.name]
 }

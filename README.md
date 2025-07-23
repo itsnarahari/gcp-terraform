@@ -10,10 +10,8 @@ Authenticate
     gcloud auth application-default login
     gcloud auth login
 
-Terraform:
-    terraform init
-    terraform plan
-    terraform apply
+terraform init
+terraform apply -var="instances_per_zone=2" -var="suffix=squid-batch"
 
 
 
