@@ -1,22 +1,19 @@
-// ==UserScript==
-// @name         Auto Redirect to Sand Telangana at 8:30 PM
-// @namespace    https://narahari-redirect
-// @version      1.1
-// @description  Redirect to sand site at exactly 8:30 PM
-// @match        https://ssotp3.online/*
-// @grant        none
-// ==/UserScript==
-
 (function () {
-    const targetHour = 20; // 8 PM
+    const targetHour = 20;
     const targetMinute = 30;
+    const targetSecond = 0;
 
     const checkTimeAndRedirect = () => {
         const now = new Date();
-        if (now.getHours() === targetHour && now.getMinutes() === targetMinute) {
-            window.location.href = "https://sand.telangana.gov.in/TGSandBazaar/Masters/OuterHome.aspx";
+        if (
+            now.getHours() === targetHour &&
+            now.getMinutes() === targetMinute &&
+            now.getSeconds() === targetSecond
+        ) {
+            clearInterval(intervalId); // Stop further checks
+            window.location.href = "https://onlinebooking.sand.telangana.gov.in/Masters/Home.aspx";
         }
     };
 
-    setInterval(checkTimeAndRedirect, 1000); // check every second
+    const intervalId = setInterval(checkTimeAndRedirect, 200); // 200 ms for better precision
 })();
