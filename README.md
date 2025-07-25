@@ -11,8 +11,36 @@ Authenticate
     gcloud auth login
 
 terraform init
-terraform apply -var="instances_per_zone=2" -var="suffix=squid-batch"
+terraform apply -var="instances_per_zone=2" -var="suffix=c"
 
+proxy:$apr1$J4ZR1Qh6$A8DGQWNCY4N9GHqM6CCid.
+ 
+auth_param basic program /usr/lib64/squid/basic_ncsa_auth /etc/squid/passwd
+auth_param basic realm proxy
+acl authenticated proxy_auth REQUIRED
+acl smtp port 25
+http_access allow authenticated
+http_port 0.0.0.0:3128
+http_access deny smtp
+http_access deny all
+forwarded_for delete
+
+
+acl smtp port 25
+http_port 0.0.0.0:3128
+http_access deny smtp
+http_access allow all
+forwarded_for delete
+
+sudo dnf install -y squid
+sudo bash -c 'cat > /etc/squid/squid.conf' <<EOF
+http_port 0.0.0.0:3128
+acl smtp port 25
+http_access deny smtp
+http_access allow all
+forwarded_for delete
+EOF
+sudo systemctl enable --now squid
 
 
 

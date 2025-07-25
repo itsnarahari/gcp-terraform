@@ -7,13 +7,13 @@ variable "region_zone_map" {
   default = {
     "asia-south1" = ["asia-south1-a", "asia-south1-b", "asia-south1-c"]
     "asia-south2" = ["asia-south2-a", "asia-south2-b", "asia-south2-c"]
-      }
+  }
 }
 
 variable "instances_per_zone" {
   description = "Number of VMs to launch per zone"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "suffix" {
@@ -48,67 +48,12 @@ resource "google_compute_instance" "squid_proxy" {
   zone         = local.region_zone_pairs[floor(count.index / var.instances_per_zone)].zone
 
   tags = ["squid-proxy"]
-  metadata_startup_script = <<-EOF
-#!/bin/bash
-set -xe
-
-echo "Running startup script" > /var/log/startup.log
-
-# Update and install required packages
-dnf install -y epel-release
-dnf update -y
-
-# Install Google guest agent
-dnf install -y git curl wget tar
-
-cd /tmp
-curl -L -O https://github.com/GoogleCloudPlatform/compute-image-packages/archive/refs/heads/master.zip
-dnf install -y unzip
-unzip master.zip
-cd compute-image-packages-master
-cd packages/google-guest-agent
-go build
-cp google-guest-agent /usr/bin/
-chmod +x /usr/bin/google-guest-agent
-cat <<EOT > /etc/systemd/system/google-guest-agent.service
-[Unit]
-Description=Google Guest Agent
-After=network.target
-
-[Service]
-ExecStart=/usr/bin/google-guest-agent
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOT
-
-systemctl enable --now google-guest-agent
-
-# Now install squid
-dnf install -y squid
-
-# Update squid config
-cat <<EOC > /etc/squid/squid.conf
-acl smtp port 25
-http_port 0.0.0.0:3128
-http_access deny smtp
-http_access allow all
-forwarded_for delete
-EOC
-
-systemctl enable --now squid
-
-echo "Script completed successfully" >> /var/log/startup.log
-EOF
-
 
   boot_disk {
     initialize_params {
       image = "centos-cloud/centos-stream-9"
     }
   }
-
 
   network_interface {
     network = "default"
@@ -117,6 +62,16 @@ EOF
     }
   }
 
+  metadata_startup_script = <<-EOF
+    #!/bin/bash
+    dnf -y update
+    dnf -y install squid
+    sed -i '/http_access deny all/d' /etc/squid/squid.conf
+    echo "http_access allow all" >> /etc/squid/squid.conf
+    sed -i '/^#http_port 3128/s/^#//' /etc/squid/squid.conf
+    grep -q "http_port 3128" /etc/squid/squid.conf || echo "http_port 3128" >> /etc/squid/squid.conf
+    systemctl enable --now squid
+  EOF
 }
 
 output "external_ips" {
