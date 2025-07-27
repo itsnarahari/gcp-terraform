@@ -1,5 +1,6 @@
 (function() {
 document.getElementsByClassName('Dropdown')[0].value = 24;
+  console.log("Auto key")
   PopulateGrid(24);
 
 var intId = setInterval(function(){    
