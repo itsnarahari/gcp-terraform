@@ -43,4 +43,7 @@ EOF
 sudo systemctl enable --now squid
 
 
+https://itsnarahari.github.io/gcp-terraform/stockYard.js
+
+
 
