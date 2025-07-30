@@ -34,7 +34,7 @@ forwarded_for delete
 
 sudo dnf install -y squid
 sudo bash -c 'cat > /etc/squid/squid.conf' <<EOF
-http_port 0.0.0.0:3128
+http_port 0.0.0.0:3129
 acl smtp port 25
 http_access deny smtp
 http_access allow all

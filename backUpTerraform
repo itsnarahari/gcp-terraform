@@ -40,13 +40,13 @@ locals {
 
 resource "google_compute_address" "static_ip" {
   count  = length(local.instance_configs)
-  name   = "p2-ip-${local.batch_suffix}-${count.index}"
+  name   = "p1-ip-${local.batch_suffix}-${count.index}"
   region = local.instance_configs[count.index].region
 }
 
 resource "google_compute_instance" "squid_proxy" {
   count        = length(local.instance_configs)
-  name         = "p2-vm2-${local.batch_suffix}-${count.index}"
+  name         = "p1-vm1-${local.batch_suffix}-${count.index}"
   machine_type = "e2-small"
   zone         = local.instance_configs[count.index].zone
 
