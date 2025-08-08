@@ -36,7 +36,7 @@
     }
 
     // Helper: Wait until dropdown has more than minOptions options
-    function waitForOptions(selector, minOptions, timeout = 1500) {
+    function waitForOptions(selector, minOptions, timeout = 300) {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
             const interval = setInterval(() => {
@@ -48,7 +48,7 @@
                     clearInterval(interval);
                     reject(new Error(`Timeout waiting for options: ${selector}`));
                 }
-            }, 200);
+            }, 100);
         });
     }
 
@@ -82,7 +82,7 @@
             if (clicked) {
                 try {
                     console.log("⏳ Waiting for detail panel to load...");
-                    await waitForOptions('#MainContent_ddlDistrict', 1, 1500); // Wait for district dropdown presence
+                    await waitForOptions('#MainContent_ddlDistrict', 1, 40); // Wait for district dropdown presence
                     console.log("✅ Detail panel loaded.");
                 } catch (e) {
                     console.error("❌ Detail panel load timed out.", e);
@@ -126,7 +126,7 @@
 
         // Wait for Mandal options to load (>82 options expected)
         try {
-            await waitForOptions('#MainContent_ddlMandal', mandalValue, 1500);
+            await waitForOptions('#MainContent_ddlMandal', mandalValue, 40);
         } catch (e) {
             console.warn("Timeout or error waiting for Mandal options", e);
         }
@@ -142,7 +142,7 @@
 
         // Wait for Village options to load (>167 options expected)
         try {
-            await waitForOptions('#MainContent_ddlVillage', 1500, villageValue);
+            await waitForOptions('#MainContent_ddlVillage', villageValue, 40);
         } catch (e) {
             console.warn("Timeout or error waiting for Village options", e);
         }
@@ -182,7 +182,6 @@ const allFieldsFilled =
     console.log("All fields filled:", allFieldsFilled);
 
     if (allFieldsFilled) {
-    setTimeout(() => {
         const submitBtn = document.querySelector('#MainContent_btnRegister');
         if (submitBtn) {
             submitBtn.click();
@@ -190,7 +189,6 @@ const allFieldsFilled =
         } else {
             console.error("❌ Submit button not found!");
         }
-    }, 1000);
 } else {
     console.warn("⚠️ Some fields missing, not submitting form.");
 }
@@ -204,7 +202,7 @@ const allFieldsFilled =
         setTimeout(() => {
             autoFillSandBooking()
                 .catch(e => console.error("Error during autofill:", e));
-        }, 1500);
+        }, 200);
     });
 
 })();
