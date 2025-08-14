@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Sand Bazar Login & OTP Automation
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Autofill login, poll OTP API, resend if no OTP in 30s, auto-submit OTP on Sand Bazar portal with alert dismissal
-// @author       API Maker + Perplexity AI
+// @version      1.3
+// @description  Autofill login, poll OTP API, resend if no OTP in 30s, try multiple OTPs sequentially, auto-submit OTP on Sand Bazar portal with alert dismissal
+// @author       API Maker + Perplexity AI + GPT-5
 // @match        https://sand.telangana.gov.in/TGSandBazaar/CommonPages/BEZLoginPage.aspx
 // @grant        none
 // ==/UserScript==
@@ -14,7 +14,7 @@
     // === Configuration ===
     const username = '9908506952';
     const password = '11221122';
-    const OTP_API_URL = 'https://dev.hariworks.in/one/otp/latest/' + username;
+    const OTP_API_URL = 'https://reader.hariworks.in/one/otp/latest/' + username;
 
     const POLL_INTERVAL = 1000;      // ms between poll attempts
     const MAX_POLL_ATTEMPTS = 20;    // max polls before forcing resend
@@ -55,30 +55,25 @@
 
     // --- Poll the OTP API ---
     function pollOTP() {
-        // Stop polling if OTP already received/submitted
         if (otpReceived || otpSubmitted) {
             pollingActive = false;
             return;
         }
 
-        // Start polling timer on first poll
         if (!pollingStartTime) pollingStartTime = Date.now();
 
-        // If 30+ seconds elapsed and resend not clicked, click resend
+        // If 30+ seconds elapsed and resend not clicked
         if (!resendClicked && Date.now() - pollingStartTime > RESEND_WAIT_TIME) {
             const resendBtn = document.querySelector(resendButtonSelector);
             if (resendBtn) {
                 resendBtn.click();
                 resendClicked = true;
-                pollAttempts = 0; // reset attempts after resend
+                pollAttempts = 0;
                 console.log("[🔄] Resend clicked after 30 seconds without OTP.");
 
-                // Override window.alert to auto-dismiss alert popup after resend
                 let originalAlert = window.alert;
                 window.alert = function (msg) {
                     console.log("[🔔] Alert detected after resend: " + msg);
-                    // Automatically suppress alert popup (do nothing)
-                    // Restore default alert after suppressing once
                     window.alert = originalAlert;
                 };
             } else {
@@ -87,14 +82,18 @@
         }
 
         fetch(OTP_API_URL, { method: 'GET' })
-            .then(response => response.text())
-            .then(otp => {
-                otp = otp.trim();
-                console.log(`[✅] OTP received: "${otp}"`);
-                if (otp && otp.length >= 4) {
-                    otpReceived = true;
-                    pollingActive = false;
-                    fillAndSubmitOTP(otp);
+            .then(response => response.json()) // Expect array or string
+            .then(data => {
+                let otps = [];
+                if (Array.isArray(data)) {
+                    otps = data.map(o => String(o).trim()).filter(o => o.length >= 4);
+                } else if (typeof data === 'string') {
+                    otps = [data.trim()];
+                }
+
+                if (otps.length > 0) {
+                    console.log(`[✅] OTPs received: ${JSON.stringify(otps)}`);
+                    tryOTPsSequentially(otps);
                 } else {
                     handleNoOTP();
                 }
@@ -105,9 +104,34 @@
             });
     }
 
-    // --- Fill OTP input and submit the form ---
+    // --- Try each OTP until success ---
+    function tryOTPsSequentially(otps) {
+        let index = 0;
+
+        const tryNext = () => {
+            if (index >= otps.length || otpSubmitted) return;
+
+            const otp = otps[index];
+            console.log(`[🔄] Trying OTP: "${otp}"`);
+
+            fillAndSubmitOTP(otp);
+
+            // Wait a bit for possible success detection
+            setTimeout(() => {
+                // TODO: Replace with your actual success detection logic
+                if (!otpSubmitted) { 
+                    index++;
+                    tryNext();
+                }
+            }, 600);
+        };
+
+        tryNext();
+    }
+
+    // --- Fill OTP input and submit ---
     function fillAndSubmitOTP(otp) {
-        if (otpSubmitted) return; // Prevent submitting twice
+        if (otpSubmitted) return;
 
         const otpInput = document.querySelector(otpInputSelector);
         const proceedBtn = document.querySelector(proceedButtonSelector);
@@ -122,7 +146,7 @@
         }
     }
 
-    // --- Handle no OTP received in a single poll attempt ---
+    // --- Handle no OTP received ---
     function handleNoOTP() {
         if (otpReceived || otpSubmitted) {
             pollingActive = false;
@@ -130,18 +154,15 @@
         }
         pollAttempts++;
         if (pollAttempts >= MAX_POLL_ATTEMPTS) {
-            // Optionally resend here if you want extra retries,
-            // but planned resend is handled via timeout above
-            pollAttempts = 0; 
+            pollAttempts = 0;
         }
         safeSetTimeout(pollOTP, POLL_INTERVAL);
     }
 
-    // === Main logic triggered when page loads ===
+    // === Main logic ===
     window.addEventListener('DOMContentLoaded', () => {
         fillLoginForm();
 
-        // Poll/check for modal visibility every 500ms
         let modalPoller = setInterval(() => {
             const modal = document.getElementById('myModal');
             if (modal) {
@@ -159,7 +180,6 @@
                             clearInterval(modalPoller);
                             pollingActive = true;
 
-                            // Reset tracking variables on modal open
                             pollingStartTime = null;
                             resendClicked = false;
                             pollAttempts = 0;
