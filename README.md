@@ -45,5 +45,15 @@ sudo systemctl enable --now squid
 
 https://itsnarahari.github.io/gcp-terraform/stockYard.js
 
+gcloud auth login
+gcloud config set project booking-p2
+gcloud auth application-default login
+
+
+terraform init
+terraform plan
+terraform apply
+
+
 
 

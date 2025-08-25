@@ -20,7 +20,7 @@
     const districtValue = "16"; // Hyderabad
     const mandalValue = "82";
     const villageValue = "167"; // Adjust if needed
-    const paymentMode = 'PAYU'; // Payment mode
+    const paymentMode = 'CFM'; // Payment mode
     const DROPDOWN_WAIT_INTERVAL = 5; // ms between checks for dropdown options
 
 
@@ -28,6 +28,27 @@
         return true;
     };
 
+    const originalAlert = window.alert;
+
+    window.alert = function (msg) {
+        const lowerMsg = msg.toLowerCase();
+
+        const knownErrors = [
+            "stockyard is not active",
+            "quantity is less",
+            "other orders in queue",
+            "please try after some time",
+            "another order was in queue for booking with this vehicle no"
+        ];
+
+        if (knownErrors.some(err => lowerMsg.includes(err))) {
+            setTimeout(() => {
+                window.location.href = "https://sand.telangana.gov.in/TGSandBazaar/InnerPages/SandBazaarBookingNew.aspx";
+            }, 100);
+        } else {
+            originalAlert(msg);  // Show alert normally for other messages
+        }
+    };
 
     // Helper: Trigger native change event on element
     function triggerChange(element) {
@@ -140,8 +161,7 @@
             addressInput.value = address;
         }
 
-        // Payment Mode = PAYU
-        const payuRadio = document.querySelector('input[name="ctl00$MainContent$rbtPG"][value="PAYU"]');
+        const payuRadio = document.querySelector(`input[name="ctl00$MainContent$rbtPG"][value="${paymentMode}"]`);
         if (payuRadio) {
             payuRadio.checked = true;
         }
@@ -172,7 +192,7 @@
     }
 
     window.addEventListener('load', () => {
-        autoFillSandBooking()
+        autoFillSandBooking();
     });
 
 })();
