@@ -7,32 +7,27 @@
 // @grant        none
 // @author       API Maker
 // ==/UserScript==
-
 (function () {
   "use strict";
-
   // GLOBAL CONFIGURATION
-  const area = "Adibatla SB Coarse"; // Change this to your target area
+  const area = "Abdullapurmet SB Fine"; // Change this to your target area
   const vehicleNumber = "TS30T3599";
   const address = "ZAHEERABAD"; // Change this to your address
   const purposeValue = "2"; // Commercial purpose
   const quantityValue = "";
+  const quantityCandidates = ["3.00", "3"]; // Could add more if needed
   const districtValue = "15"; // Hyderabad
   const mandalValue = "74";
   const villageValue = "108"; // Adjust if needed
   const paymentMode = "PAYU"; // Payment mode
   const DROPDOWN_WAIT_INTERVAL = 5; // ms between checks for dropdown options
-  const quantityCandidates = ["32.00", "32"]; // Could add more if needed
 
   window.confirm = function (msg) {
     return true;
   };
-
   const originalAlert = window.alert;
-
   window.alert = function (msg) {
     const lowerMsg = msg.toLowerCase();
-
     const knownErrors = [
       "stockyard is not active",
       "quantity is less",
@@ -40,7 +35,6 @@
       "please try after some time",
       "another order was in queue for booking with this vehicle no",
     ];
-
     if (knownErrors.some((err) => lowerMsg.includes(err))) {
       setTimeout(() => {
         window.location.href =
@@ -50,13 +44,11 @@
       originalAlert(msg); // Show alert normally for other messages
     }
   };
-
   // Helper: Trigger native change event on element
   function triggerChange(element) {
     const event = new Event("change", { bubbles: true });
     element.dispatchEvent(event);
   }
-
   // Helper: Keep checking until dropdown has more than minOptions options (no timeout)
   function waitForOptions(selector, minOptions) {
     return new Promise((resolve) => {
@@ -77,14 +69,13 @@
     );
     return stockyardName && stockyardName.innerText.trim().length > 0;
   }
-
   // The main autofill flow
   async function autoFillSandBooking() {
+    alert("Auto-filling Sand Booking Form...");
     // Prevent infinite autofill loop
     if (sessionStorage.getItem("sandAutoFilled") === "yes") {
       return;
     }
-
     // Step 1: Select Sand Bazaar row if detail panel not loaded
     if (!isDetailPanelLoaded()) {
       const rows = document.querySelectorAll("#gvStockyard tr");
@@ -106,9 +97,15 @@
         return;
       }
     }
-
-    // Find the current valid value present in the options
+    // Step 2: Fill form fields including cascading selects
+    // Select Purpose of Sand = Commercial (value "2")
+    const purposeSelect = document.querySelector("#MainContent_ddlsandpurpose");
+    if (purposeSelect) {
+      purposeSelect.value = purposeValue;
+    }
+    // Select Quantity = 32 (value "32")
     let foundQuantityValue = null;
+    const quantitySelect = document.querySelector("#MainContent_ddlQuantity");
     if (quantitySelect) {
       for (const val of quantityCandidates) {
         if ([...quantitySelect.options].some((opt) => opt.value == val)) {
@@ -122,13 +119,11 @@
         triggerChange(quantitySelect);
       }
     }
-
     // Vehicle Number
     const vehicleInput = document.querySelector("#MainContent_txtVehicelNo");
     if (vehicleInput) {
       vehicleInput.value = vehicleNumber;
     }
-
     function waitAndSelect(selector, value, interval = 5) {
       return new Promise((resolve) => {
         let retry = setInterval(() => {
@@ -145,35 +140,29 @@
         }, interval);
       });
     }
-
     // Usage in your async autofill func:
     const districtSelect = document.querySelector("#MainContent_ddlDistrict");
     if (districtSelect) {
       districtSelect.value = districtValue;
       triggerChange(districtSelect);
-
       // This will now wait until Mandal is selected
       await waitAndSelect("#MainContent_ddlMandal", mandalValue);
-
       // Then wait until Village is selected
       await waitAndSelect("#MainContent_ddlVillage", villageValue);
     } else {
       return;
     }
-
     // Address
     const addressInput = document.querySelector("#MainContent_txtAddress");
     if (addressInput) {
       addressInput.value = address;
     }
-
     const payuRadio = document.querySelector(
       `input[name="ctl00$MainContent$rbtPG"][value="${paymentMode}"]`
     );
     if (payuRadio) {
       payuRadio.checked = true;
     }
-
     const mandalSelect = document.querySelector("#MainContent_ddlMandal");
     const villageSelect = document.querySelector("#MainContent_ddlVillage");
     const allFieldsFilled =
@@ -193,7 +182,6 @@
       addressInput.value &&
       payuRadio &&
       payuRadio.checked;
-
     if (allFieldsFilled) {
       const submitBtn = document.querySelector("#MainContent_btnRegister");
       if (submitBtn) {
@@ -202,11 +190,9 @@
       }
     } else {
     }
-
     // Set flag so script doesn't rerun endlessly
     sessionStorage.setItem("sandAutoFilled", "yes");
   }
-
   window.addEventListener("load", () => {
     autoFillSandBooking();
   });
