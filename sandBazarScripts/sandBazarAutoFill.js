@@ -14,8 +14,8 @@
   const vehicleNumber = "TS30T3599";
   const address = "ZAHEERABAD"; // Change this to your address
   const purposeValue = "2"; // Commercial purpose
-  const quantityValue = "";
-  const quantityCandidates = ["3.00", "3"]; // Could add more if needed
+  var quantityValue = "";
+  const quantityCandidates = ["32.00", "32"]; // Could add more if needed
   const districtValue = "15"; // Hyderabad
   const mandalValue = "74";
   const villageValue = "108"; // Adjust if needed
@@ -71,7 +71,6 @@
   }
   // The main autofill flow
   async function autoFillSandBooking() {
-    alert("Auto-filling Sand Booking Form...");
     // Prevent infinite autofill loop
     if (sessionStorage.getItem("sandAutoFilled") === "yes") {
       return;
@@ -193,7 +192,7 @@
     // Set flag so script doesn't rerun endlessly
     sessionStorage.setItem("sandAutoFilled", "yes");
   }
-  window.addEventListener("load", () => {
-    autoFillSandBooking();
+  window.addEventListener("load", async () => {
+    await autoFillSandBooking();
   });
 })();
