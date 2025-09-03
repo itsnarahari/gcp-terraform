@@ -16,7 +16,7 @@
   const vehicleNumber = "TS30T3599";
   const address = "ZAHEERABAD"; // Change this to your address
   const purposeValue = "2"; // Commercial purpose
-  const quantityValue = "32.00";
+  const quantityValue = "";
   const districtValue = "15"; // Hyderabad
   const mandalValue = "74";
   const villageValue = "108"; // Adjust if needed
@@ -107,21 +107,6 @@
       }
     }
 
-    // Step 2: Fill form fields including cascading selects
-
-    // Select Purpose of Sand = Commercial (value "2")
-    const purposeSelect = document.querySelector("#MainContent_ddlsandpurpose");
-    if (purposeSelect) {
-      purposeSelect.value = purposeValue;
-    }
-
-    // Select Quantity = 32 (value "32")
-    const quantitySelect = document.querySelector("#MainContent_ddlQuantity");
-    if (quantitySelect) {
-      quantitySelect.value = quantityValue;
-      triggerChange(quantitySelect);
-    }
-
     // Find the current valid value present in the options
     let foundQuantityValue = null;
     if (quantitySelect) {
@@ -133,6 +118,7 @@
       }
       if (foundQuantityValue) {
         quantitySelect.value = foundQuantityValue;
+        quantityValue = foundQuantityValue;
         triggerChange(quantitySelect);
       }
     }
