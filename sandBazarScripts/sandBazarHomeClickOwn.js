@@ -82,15 +82,21 @@
     if (noRecordsIntervalId) return;
     noRecordsIntervalId = setInterval(() => {
       const bodyText = document.body ? document.body.textContent : "";
+
+      // Reload if target text NOT found (regardless of other text)
       if (!bodyText.toLowerCase().includes(TARGET_TEXT.toLowerCase())) {
+        location.reload();
         clearInterval(noRecordsIntervalId);
         noRecordsIntervalId = null;
+      }
+      // Reload if "No Records Found" text appears
+      else if (bodyText.includes(NO_RECORDS_TEXT)) {
         location.reload();
-      } else if (bodyText.includes(NO_RECORDS_TEXT)) {
         clearInterval(noRecordsIntervalId);
         noRecordsIntervalId = null;
-        location.reload();
-      } else {
+      }
+      // Otherwise, target present and no errors, stop retrying
+      else {
         clearInterval(noRecordsIntervalId);
         noRecordsIntervalId = null;
       }
