@@ -1,0 +1,174 @@
+############################################
+# Provider
+############################################
+provider "google" {
+  project = "booking-p2"
+}
+
+############################################
+# Vars (minimal)
+############################################
+variable "instances_distribution" {
+  default = {
+    "asia-south1-a" = 1
+  }
+}
+
+variable "suffix" {
+  type    = string
+  default = null
+}
+
+# WARNING: avoid open proxy unless you really intend it.
+variable "allowed_cidrs" {
+  type    = list(string)
+  default = ["0.0.0.0/0"]
+}
+
+############################################
+# Locals
+############################################
+locals {
+  batch_suffix = var.suffix != null ? var.suffix : formatdate("YYYYMMDD-HHmmss", timestamp())
+
+  instance_configs = flatten([
+    for zone, count in var.instances_distribution : [
+      for i in range(count) : {
+        zone   = zone
+        region = format("%s-%s", split("-", zone)[0], split("-", zone)[1])
+        index  = "${zone}-${i}"
+      }
+    ]
+  ])
+}
+
+############################################
+# Static external IPs (regional)
+############################################
+resource "google_compute_address" "static_ip" {
+  count  = length(local.instance_configs)
+  name   = "p2-ip-${local.batch_suffix}-${count.index}"
+  region = local.instance_configs[count.index].region
+}
+
+############################################
+# GCP firewall (default network) — 3128 & optional SSH
+############################################
+resource "google_compute_firewall" "allow_squid_3128" {
+  name    = "allow-squid-3128"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3128"]
+  }
+
+  source_ranges = var.allowed_cidrs
+  target_tags   = ["squid-proxy"]
+}
+
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "allow-ssh-squid"
+  network = "default"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = var.allowed_cidrs
+  target_tags   = ["squid-proxy"]
+}
+
+############################################
+# Instances (Ubuntu 22.04 LTS)
+############################################
+resource "google_compute_instance" "squid_proxy" {
+  count        = length(local.instance_configs)
+  name         = "p2-vm2-${local.batch_suffix}-${count.index}"
+  machine_type = "e2-small"
+  zone         = local.instance_configs[count.index].zone
+  tags         = ["squid-proxy"]
+
+  boot_disk {
+    initialize_params {
+      # Ubuntu LTS image family
+      image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+      # shorthand also works: "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {
+      nat_ip = google_compute_address.static_ip[count.index].address
+    }
+  }
+
+  # Startup script: install squid and lock it to allowed_cidrs
+  metadata_startup_script = <<-EOT
+    #!/bin/bash
+    set -euxo pipefail
+
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y
+    apt-get install -y squid
+
+    # Build squid.conf (restrict to the same CIDRs as GCP firewall)
+    cat >/etc/squid/squid.conf <<'EOFCONF'
+    http_port 0.0.0.0:3128
+
+    # Log basics
+    access_log stdio:/var/log/squid/access.log
+    cache_log /var/log/squid/cache.log
+    cache_store_log none
+
+    # Tighten headers
+    forwarded_for delete
+    request_header_access Via deny all
+    request_header_access X-Forwarded-For deny all
+
+    # Define allowed client sources (Terraform will expand this below)
+    acl allowed src __ALLOWED_CIDRS__
+
+    # Deny mail relay via proxy (good hygiene)
+    acl smtp_port port 25
+    http_access deny smtp_port
+
+    # Order: first allow our ACL, then deny everything else
+    http_access allow allowed
+    http_access deny all
+
+    # Minimal cache (or disable if you prefer)
+    cache deny all
+    EOFCONF
+
+    # Inject Terraform var.allowed_cidrs into the placeholder
+    sed -i "s#__ALLOWED_CIDRS__#${join(" ", var.allowed_cidrs)}#g" /etc/squid/squid.conf
+
+    # Enable & start
+    systemctl daemon-reload
+    systemctl enable --now squid
+
+    # Quick diagnostics
+    systemctl status squid --no-pager || true
+    ss -lntp | grep 3128 || true
+  EOT
+
+  service_account {
+    scopes = ["https://www.googleapis.com/auth/logging.write", "https://www.googleapis.com/auth/monitoring.write"]
+  }
+
+  depends_on = [google_compute_firewall.allow_squid_3128]
+}
+
+############################################
+# Outputs
+############################################
+output "external_ips" {
+  value = [for ip in google_compute_address.static_ip : ip.address]
+}
+
+output "instance_names" {
+  value = [for vm in google_compute_instance.squid_proxy : vm.name]
+}
