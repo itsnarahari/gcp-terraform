@@ -26,6 +26,8 @@ http_access deny all
 forwarded_for delete
 
 
+//hhj
+
 acl smtp port 25
 http_port 0.0.0.0:3128
 http_access deny smtp
