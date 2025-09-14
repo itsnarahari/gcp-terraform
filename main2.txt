@@ -13,6 +13,7 @@ variable "instances_distribution" {
     "asia-south1-a" = 1
   }
 }
+// test
 
 variable "suffix" {
   type    = string
